@@ -4,6 +4,6 @@ Minimalist to-do list and notes app with smooth animations and a beautiful UI.
 
 ## Preview
 
-![UI Preview](UI.jpg)
+![UI Preview](./UI-img.jpg)
 
-https://github.com/saint0x/jot-app/UI-vid.mov 
+[Watch Demo](./ui-vid.mov) 

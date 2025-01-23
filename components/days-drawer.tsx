@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import type { Days } from "../types/todo"
 import { motion, AnimatePresence, useAnimation, useMotionValue } from "framer-motion"
 import { useStickyScroll } from "../hooks/use-sticky-scroll"
@@ -54,6 +54,13 @@ export function DaysDrawer({ isOpen, onClose, activeDay, onSelectDay, days }: Da
     }
   }
 
+  // Add visual indicator for tomorrow
+  const isTomorrow = useCallback((day: Days) => {
+    const currentDayIndex = days.indexOf(activeDay)
+    const nextDayIndex = (currentDayIndex + 1) % days.length
+    return days[nextDayIndex] === day
+  }, [days, activeDay])
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -89,16 +96,15 @@ export function DaysDrawer({ isOpen, onClose, activeDay, onSelectDay, days }: Da
                   key={day}
                   className={`
                     w-full text-left px-6 py-4 transition-colors duration-300 ease-in-out
-                    ${day === activeDay ? "bg-gray-100" : ""}
+                    relative
+                    ${isTomorrow(day) ? 'after:content-["tomorrow"] after:absolute after:right-6 after:top-1/2 after:-translate-y-1/2 after:text-xs after:text-zinc-400' : ''}
                   `}
                   style={{
                     backgroundColor: `rgb(${255 - index * 8}, ${255 - index * 8}, ${255 - index * 8})`,
                     transform: "translateZ(0)",
                     willChange: "transform",
                   }}
-                  onClick={() => {
-                    onSelectDay(day)
-                  }}
+                  onClick={() => onSelectDay(day)}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >

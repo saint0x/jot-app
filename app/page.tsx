@@ -1,13 +1,24 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useMemo } from "react"
 import type { Days, Task, Note } from "../types/todo"
 import { DaySection } from "../components/day-section"
 import { FloatingButton } from "../components/floating-button"
 import { DaysDrawer } from "../components/days-drawer"
 import { getCurrentDay, formatDateString } from "../utils/date"
 
-const DAYS: Days[] = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]
+function getOrderedDays(currentDay: Days): Days[] {
+  const DAYS: Days[] = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]
+  const currentIndex = DAYS.indexOf(currentDay)
+  
+  // Return days starting from next day after current
+  const orderedDays = [
+    ...DAYS.slice(currentIndex + 1),
+    ...DAYS.slice(0, currentIndex)
+  ]
+
+  return orderedDays
+}
 
 export default function TodoApp() {
   const [tasks, setTasks] = useState<Record<string, Task[]>>({})
@@ -15,6 +26,8 @@ export default function TodoApp() {
   const [activeDay, setActiveDay] = useState<Days>(getCurrentDay() as Days)
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+
+  const orderedDays = useMemo(() => getOrderedDays(activeDay), [activeDay])
 
   const fetchTasks = useCallback(async (date: string) => {
     try {
@@ -218,7 +231,7 @@ export default function TodoApp() {
         onClose={() => setIsDrawerOpen(false)}
         activeDay={activeDay}
         onSelectDay={handleSelectDay}
-        days={DAYS}
+        days={orderedDays}
       />
     </div>
   )

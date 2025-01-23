@@ -1,7 +1,28 @@
 import sqlite3 from "sqlite3"
 import { open } from "sqlite"
-import fs from "fs/promises"
 import path from "path"
+
+const SCHEMA = `
+CREATE TABLE IF NOT EXISTS tasks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  text TEXT NOT NULL,
+  completed BOOLEAN NOT NULL DEFAULT 0,
+  date TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS notes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  text TEXT NOT NULL,
+  date TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_date ON tasks(date);
+CREATE INDEX IF NOT EXISTS idx_notes_date ON notes(date);
+`
 
 let db: any = null
 
@@ -15,12 +36,12 @@ async function openDb() {
       driver: sqlite3.Database,
     })
 
-    // Check if the database is newly created
-    const isNewDb = await isNewDatabase()
-    console.log("Is new database:", isNewDb)
+    // Always check if tables exist
+    const tableExists = await checkTablesExist()
+    console.log("Tables exist:", tableExists)
 
-    if (isNewDb) {
-      console.log("Initializing new database...")
+    if (!tableExists) {
+      console.log("Tables don't exist, initializing database...")
       await initializeDatabase()
       console.log("Database initialization complete")
     }
@@ -28,26 +49,22 @@ async function openDb() {
   return db
 }
 
-async function isNewDatabase() {
+async function checkTablesExist() {
   try {
-    const dbPath = path.join(process.cwd(), "db", "database.db")
-    const stats = await fs.stat(dbPath)
-    console.log("Database file size:", stats.size)
-    // Consider it new if the file is empty
-    return stats.size === 0
-  } catch (error) {
-    console.log("Database file does not exist, creating new one")
+    // Check if both tables exist by trying to get a row
+    await db.get("SELECT 1 FROM notes LIMIT 1")
+    await db.get("SELECT 1 FROM tasks LIMIT 1")
     return true
+  } catch (error) {
+    return false
   }
 }
 
 async function initializeDatabase() {
   try {
-    const schemaPath = path.join(process.cwd(), "db", "schema.sql")
-    console.log("Reading schema from:", schemaPath)
-    const schema = await fs.readFile(schemaPath, "utf-8")
-    console.log("Schema contents:", schema)
-    await db.exec(schema)
+    console.log("Executing schema...")
+    await db.exec(SCHEMA)
+    console.log("Schema execution complete")
   } catch (error) {
     console.error("Error initializing database:", error)
     throw error
@@ -56,12 +73,19 @@ async function initializeDatabase() {
 
 export async function getTasks(date: string) {
   const db = await openDb()
-  return db.all("SELECT * FROM tasks WHERE date = ? ORDER BY created_at", [date])
+  return db.all(
+    "SELECT * FROM tasks WHERE date = ? ORDER BY created_at DESC", 
+    [date]
+  )
 }
 
 export async function addTask(text: string, date: string) {
   const db = await openDb()
-  const result = await db.run("INSERT INTO tasks (text, completed, date) VALUES (?, ?, ?)", [text, false, date])
+  const result = await db.run(
+    `INSERT INTO tasks (text, completed, date, created_at) 
+     VALUES (?, ?, ?, datetime('now', 'localtime'))`,
+    [text, false, date]
+  )
   return result.lastID
 }
 
@@ -72,23 +96,36 @@ export async function updateTask(id: number, completed: boolean) {
 
 export async function deleteTask(id: number) {
   const db = await openDb()
-  await db.run("DELETE FROM tasks WHERE id = ?", [id])
+  await db.run(
+    "DELETE FROM tasks WHERE id = ? AND date = date('now', 'localtime')", 
+    [id]
+  )
 }
 
 export async function getNotes(date: string) {
   const db = await openDb()
-  return db.all("SELECT * FROM notes WHERE date = ? ORDER BY created_at", [date])
+  return db.all(
+    "SELECT * FROM notes WHERE date = ? ORDER BY created_at DESC", 
+    [date]
+  )
 }
 
 export async function addNote(text: string, date: string) {
   const db = await openDb()
-  const result = await db.run("INSERT INTO notes (text, date) VALUES (?, ?)", [text, date])
+  const result = await db.run(
+    `INSERT INTO notes (text, date, created_at) 
+     VALUES (?, ?, datetime('now', 'localtime'))`,
+    [text, date]
+  )
   return result.lastID
 }
 
 export async function deleteNote(id: number) {
   const db = await openDb()
-  await db.run("DELETE FROM notes WHERE id = ?", [id])
+  await db.run(
+    "DELETE FROM notes WHERE id = ? AND date = date('now', 'localtime')", 
+    [id]
+  )
 }
 
 export async function getAllRecords() {

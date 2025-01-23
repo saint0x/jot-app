@@ -15,21 +15,19 @@ interface WeatherResponse {
 
 export async function getWeather(): Promise<{ temp: number; error?: string }> {
   try {
-    const response = await fetch(`https://api.weatherapi.com/v1/current.json?key=${API_KEY}&q=New York&aqi=no`)
-
+    const response = await fetch('/api/weather')
+    
     if (!response.ok) {
       throw new Error("Weather API request failed")
     }
 
-    const data: WeatherResponse = await response.json()
-
+    const data = await response.json()
+    
     if (data.error) {
-      throw new Error(data.error.message)
+      return { temp: 0, error: data.error }
     }
 
-    return {
-      temp: Math.round(data.current.temp_f),
-    }
+    return { temp: data.temp }
   } catch (error) {
     console.error("Error fetching weather data:", error)
     return { temp: 0, error: "Failed to fetch weather data" }
